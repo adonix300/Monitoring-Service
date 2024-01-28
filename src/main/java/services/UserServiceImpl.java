@@ -45,7 +45,7 @@ public class UserServiceImpl implements UserService {
         }
         user.setPassword(newPassword);
         if (user.getPassword().equals(newPassword)) {
-            System.out.println("Пароль успешно сменен.\n");
+            System.out.println("Пароль успешно сменен.");
             logger.info("Пользователь " + user.getLogin() + " сменил пароль.");
         }
     }
