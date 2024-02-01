@@ -1,21 +1,20 @@
 import enums.Role;
 import exceptions.ValidationException;
-import interfaces.Logger;
-import interfaces.ReadingsService;
-import interfaces.UserService;
-import logger.LoggerImpl;
+import logger.Logger;
+import models.Readings;
+import services.ReadingsService;
+import services.UserService;
+import logger.impl.LoggerImpl;
 import models.User;
-import repositories.ReadingsRepositoryImpl;
-import repositories.UserRepositoryImpl;
-import services.ReadingsServiceImpl;
-import services.UserServiceImpl;
+import repositories.impl.ReadingsRepositoryImpl;
+import repositories.impl.UserRepositoryImpl;
+import services.impl.ReadingsServiceImpl;
+import services.impl.UserServiceImpl;
 import validators.ReadingsValidator;
 import validators.UserValidator;
 
 import java.time.DateTimeException;
 import java.time.Month;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
 
@@ -99,13 +98,13 @@ public class Main {
      * Перенаправляет пользователя на панель пользователя или администратора в зависимости от его роли.
      *
      * @param scanner Объект Scanner для чтения ввода пользователя.
-     * @param user Пользователь, который должен быть перенаправлен.
+     * @param user    Пользователь, который должен быть перенаправлен.
      */
     private static void redirectToUserPanel(Scanner scanner, User user) {
         if (user.getRole() == Role.USER) {
             processUsersAction(scanner, user);
         } else if (user.getRole() == Role.ADMIN) {
-            redirectToAdminPanel(scanner);
+            redirectToAdminPanel(scanner, user);
         }
     }
 
@@ -115,14 +114,14 @@ public class Main {
      *
      * @param scanner Объект Scanner для чтения ввода пользователя.
      */
-    private static void redirectToAdminPanel(Scanner scanner) {
+    private static void redirectToAdminPanel(Scanner scanner, User admin) {
         while (true) {
-            System.out.println("Для просмотра показаний пользователей нажмите 1.\n" +
+            System.out.println("\nДля просмотра показаний пользователей нажмите 1.\n" +
                     "Для выхода нажмите 2.");
             String action = scanner.nextLine();
-            switch (action){
+            switch (action) {
                 case "1":
-                    processAdminActions(scanner);
+                    processAdminActions(scanner, admin);
                     break;
                 case "2":
                     return;
@@ -138,23 +137,24 @@ public class Main {
      *
      * @param scanner Объект Scanner для чтения ввода администратора.
      */
-    private static void processAdminActions(Scanner scanner) {
+    private static void processAdminActions(Scanner scanner, User admin) {
         System.out.print("Введите логин интересующего вас пользователя: ");
         System.out.println(userService.getLogins());
         String login = scanner.nextLine();
-        Optional<User> user = userService.getUser(login);
+        Optional<User> user = userService.getUserForAdmin(login, admin);
         user.ifPresent(value -> {
             logger.info("Админ выбрал пользователя: " + user.get().getLogin());
-            getAllReadings(user.get());
+            printAllReadings(user.get());
         });
     }
+
     /**
      * Обрабатывает действия пользователя, предоставляя ему возможность подачи показаний,
      * просмотра актуальных показаний, просмотра показаний за определенный месяц,
      * просмотра истории подачи показаний, смены пароля аккаунта или выхода.
      *
      * @param scanner Объект Scanner для чтения ввода пользователя.
-     * @param user Пользователь, действия которого должны быть обработаны.
+     * @param user    Пользователь, действия которого должны быть обработаны.
      */
     private static void processUsersAction(Scanner scanner, User user) {
         while (true) {
@@ -178,7 +178,7 @@ public class Main {
                     getReadingsByMonth(scanner, user);
                     break;
                 case "4":
-                    getAllReadings(user);
+                    printAllReadings(user);
                     break;
                 case "5":
                     updateUserPassword(scanner, user);
@@ -196,7 +196,7 @@ public class Main {
      * Обновляет пароль пользователя, запрашивая у него старый и новый пароли.
      *
      * @param scanner Объект Scanner для чтения ввода пользователя.
-     * @param user Пользователь, который хочет обновить свой пароль.
+     * @param user    Пользователь, который хочет обновить свой пароль.
      */
     private static void updateUserPassword(Scanner scanner, User user) {
         try {
@@ -215,29 +215,28 @@ public class Main {
      * Добавляет показания пользователя, запрашивая у него месяц и показания по отоплению, горячей и холодной воде.
      *
      * @param scanner Объект Scanner для чтения ввода пользователя.
-     * @param user Пользователь, который хочет добавить показания.
+     * @param user    Пользователь, который хочет добавить показания.
      */
     private static void addReadings(Scanner scanner, User user) {
         try {
             System.out.print("Укажите порядковый номер месяца: ");
             Month month = Month.of(Integer.parseInt(scanner.nextLine()));
 
-            Map<String, Double> readings = new HashMap<>();
+            Readings readings = new Readings();
 
             System.out.print("Показания отопления: ");
             double heating = Double.parseDouble(scanner.nextLine());
-            readings.put("heating", heating);
+            readings.add("Отопление", heating);
 
             System.out.print("Показания горячей воды: ");
             double hotWater = Double.parseDouble(scanner.nextLine());
-            readings.put("hotWater", hotWater);
+            readings.add("Горячая вода", hotWater);
 
             System.out.print("Показания холодной воды: ");
             double coldWater = Double.parseDouble(scanner.nextLine());
-            readings.put("coldWater", coldWater);
+            readings.add("Холодная вода", coldWater);
 
             // Здесь мы сможем расширить перечень подаваемых показаний
-
             readingsService.addReadings(user, month, readings);
         } catch (NumberFormatException e) {
             System.out.println("Введены некорректные данные. Пожалуйста, введите числа.");
@@ -254,8 +253,8 @@ public class Main {
      *
      * @param user Пользователь, для которого нужно получить и вывести показания.
      */
-    private static void getAllReadings(User user) {
-        readingsService.printAllReadings(user);
+    private static void printAllReadings(User user) {
+        System.out.print(readingsService.getAllReadings(user));
     }
 
     /**
@@ -273,7 +272,7 @@ public class Main {
      * Если показания отсутствуют, выводит сообщение об этом.
      *
      * @param scanner Объект Scanner для чтения ввода пользователя.
-     * @param user Пользователь, для которого нужно получить и вывести показания.
+     * @param user    Пользователь, для которого нужно получить и вывести показания.
      */
     private static void getReadingsByMonth(Scanner scanner, User user) {
         try {

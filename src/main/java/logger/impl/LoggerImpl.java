@@ -1,6 +1,6 @@
-package logger;
+package logger.impl;
 
-import interfaces.Logger;
+import logger.Logger;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,24 +18,26 @@ public class LoggerImpl implements Logger {
 
     private static Logger instance = null;
     private FileWriter writer;
+
     /**
      * Создает экземпляр LoggerImpl и открывает файл "logs.log" для записи.
      * Если файл не может быть открыт, выводит трассировку стека исключения.
      */
-    private LoggerImpl(){
+    private LoggerImpl() {
         try {
             writer = new FileWriter("logs.log", true);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
     /**
      * Возвращает единственный экземпляр LoggerImpl.
      * Если экземпляр еще не был создан, создает его.
      *
      * @return Единственный экземпляр LoggerImpl.
      */
-    public static Logger getInstance(){
+    public static Logger getInstance() {
         if (instance == null) {
             instance = new LoggerImpl();
         }
@@ -48,7 +50,7 @@ public class LoggerImpl implements Logger {
      *
      * @param msg Сообщение, которое нужно записать.
      */
-    private void log(String msg){
+    private void log(String msg) {
         try {
             writer.append("[")
                     .append(LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)))
@@ -62,10 +64,9 @@ public class LoggerImpl implements Logger {
             System.err.println("Log Error " + msg);
         }
     }
+
     /**
-     * Записывает информационное сообщение в файл "logs.log".
-     *
-     * @param message Информационное сообщение, которое нужно записать.
+     * {@inheritDoc}
      */
     public void info(String message) {
         log("INFO : " + message);

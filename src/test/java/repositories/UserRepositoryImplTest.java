@@ -2,45 +2,52 @@ package repositories;
 
 import enums.Role;
 import models.User;
-import org.junit.jupiter.api.*;
-import java.util.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import repositories.impl.UserRepositoryImpl;
+
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class UserRepositoryImplTest {
-    private UserRepositoryImpl userRepository;
+    private UserRepositoryImpl repository;
+    private User user;
 
     @BeforeEach
-    public void init() {
-        userRepository = new UserRepositoryImpl();
+    public void setUp() {
+        repository = new UserRepositoryImpl();
+        user = new User("testLogin", "testPassword", Role.USER);
     }
 
     @Test
+    @DisplayName("Проверка добавления пользователя и получения пользователя")
     public void testAddUser() {
-        User user = new User("testLogin", "testPassword", Role.USER);
-        userRepository.addUser(user);
-        Optional<User> result = userRepository.getUser("testLogin");
+        repository.addUser(user);
+
+        Optional<User> result = repository.getUser("testLogin");
+
         assertTrue(result.isPresent());
-        assertEquals("testLogin", result.get().getLogin());
+        assertEquals(user, result.get());
     }
 
     @Test
-    public void testGetUser() {
-        User user = new User("login", "pass", Role.USER);
-        userRepository.addUser(user);
-        Optional<User> result = userRepository.getUser("login");
-        assertTrue(result.isPresent());
-        assertEquals("login", result.get().getLogin());
+    @DisplayName("Проверка получения пользователя, когда его нет")
+    public void testGetUserWhenNonePresent() {
+        Optional<User> result = repository.getUser("nonExistentUser");
+
+        assertFalse(result.isPresent());
     }
 
     @Test
+    @DisplayName("Проверка получения всех логинов")
     public void testGetAllLogins() {
-        User user1 = new User("login1", "pass1", Role.USER);
-        User user2 = new User("login2", "pass2", Role.USER);
-        userRepository.addUser(user1);
-        userRepository.addUser(user2);
-        List<String> result = userRepository.getAllLogins();
-        assertTrue(result.contains("login1"));
-        assertTrue(result.contains("login2"));
+        repository.addUser(user);
+
+        List<String> result = repository.getAllLogins();
+
+        assertTrue(result.contains("testLogin"));
     }
 }

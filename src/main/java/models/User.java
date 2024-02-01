@@ -12,6 +12,7 @@ public class User {
     private final String login;
     private String password;
     private final Role role;
+
     public User(String login, String password, Role role) {
         this.login = login;
         this.password = password;
@@ -21,9 +22,11 @@ public class User {
     public Role getRole() {
         return role;
     }
+
     public String getLogin() {
         return login;
     }
+
     public String getPassword() {
         return password;
     }

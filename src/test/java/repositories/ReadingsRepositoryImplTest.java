@@ -1,53 +1,67 @@
 package repositories;
 
 import enums.Role;
+import models.Readings;
 import models.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import repositories.impl.ReadingsRepositoryImpl;
 
 import java.time.Month;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ReadingsRepositoryImplTest {
-    private ReadingsRepositoryImpl readingsRepository;
+    private User user;
+    private Readings readings;
+    private ReadingsRepository repository;
 
     @BeforeEach
-    public void init() {
-        readingsRepository = new ReadingsRepositoryImpl();
+    public void setUp() {
+        repository = new ReadingsRepositoryImpl();
+        user = new User("testLogin", "testPassword", Role.USER);
+        readings = new Readings();
     }
 
     @Test
+    @DisplayName("Проверка добавления показаний")
     public void testAddReadings() {
-        User user = new User("testLogin", "testPassword", Role.USER);
-        Map<String, Double> readings = Map.of("heating", 100.0, "hotWater", 200.0, "coldWater", 300.0);
-        readingsRepository.addReadings(user, Month.JANUARY, readings);
-        Optional<Map<Month, Map<String, Double>>> result = readingsRepository.getAllReadings(user);
+        repository.addReadings(user, Month.JANUARY, readings);
+
+        Optional<Map<Month, Readings>> result = repository.getAllReadings(user);
+
         assertTrue(result.isPresent());
+        assertTrue(result.get().containsKey(Month.JANUARY));
         assertEquals(readings, result.get().get(Month.JANUARY));
     }
 
     @Test
-    public void testGetAllReadings() {
-        User user = new User("testLogin", "testPassword", Role.USER);
-        Map<String, Double> readings = Map.of("heating", 100.0, "hotWater", 200.0, "coldWater", 300.0);
-        readingsRepository.addReadings(user, Month.JANUARY, readings);
-        Optional<Map<Month, Map<String, Double>>> result = readingsRepository.getAllReadings(user);
-        assertTrue(result.isPresent());
-        assertEquals(readings, result.get().get(Month.JANUARY));
+    @DisplayName("Проверка получения всех показаний, когда их нет")
+    public void testGetAllReadingsWhenNonePresent() {
+        Optional<Map<Month, Readings>> result = repository.getAllReadings(user);
+
+        assertFalse(result.isPresent());
     }
 
     @Test
+    @DisplayName("Проверка получения показаний по месяцам")
     public void testGetReadingsByMonth() {
-        User user = new User("testLogin", "testPassword", Role.USER);
-        Map<String, Double> readings = Map.of("heating", 100.0, "hotWater", 200.0, "coldWater", 300.0);
-        readingsRepository.addReadings(user, Month.JANUARY, readings);
-        Optional<Map<String, Double>> result = readingsRepository.getReadingsByMonth(user, Month.JANUARY);
+        repository.addReadings(user, Month.JANUARY, readings);
+
+        Optional<Readings> result = repository.getReadingsByMonth(user, Month.JANUARY);
+
         assertTrue(result.isPresent());
         assertEquals(readings, result.get());
     }
-}
 
+    @Test
+    @DisplayName("Проверка получения показаний по месяцам, когда их нет")
+    public void testGetReadingsByMonthWhenNonePresent() {
+        Optional<Readings> result = repository.getReadingsByMonth(user, Month.JANUARY);
+
+        assertFalse(result.isPresent());
+    }
+}

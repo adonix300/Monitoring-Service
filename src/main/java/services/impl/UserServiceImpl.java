@@ -1,47 +1,42 @@
-package services;
+package services.impl;
 
 import enums.Role;
 import exceptions.ValidationException;
-import interfaces.Logger;
-import interfaces.UserService;
-import interfaces.Validator;
-import logger.LoggerImpl;
+import logger.Logger;
+import logger.impl.LoggerImpl;
 import models.User;
-import repositories.UserRepositoryImpl;
+import repositories.UserRepository;
+import services.UserService;
+import validators.Validator;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Реализация интерфейса UserService.
- * Предоставляет методы для работы с пользователями, такие как изменение пароля, регистрация нового пользователя и получение информации о пользователе.
  * Использует UserRepository для хранения данных пользователей и Validator для проверки данных пользователей.
  */
 public class UserServiceImpl implements UserService {
-    private final UserRepositoryImpl repository;
+    private final UserRepository repository;
     private final Validator<User> validator;
     private final static Logger logger = LoggerImpl.getInstance();
 
-    public UserServiceImpl(UserRepositoryImpl repository, Validator<User> validator) {
+    public UserServiceImpl(UserRepository repository, Validator<User> validator) {
         this.repository = repository;
         this.validator = validator;
     }
 
     /**
-     * Изменяет пароль пользователя.
-     * Если старый пароль неверен или новый пароль пуст, выбрасывает исключение ValidationException.
+     * {@inheritDoc}
      *
-     * @param user Пользователь, который хочет изменить пароль.
-     * @param oldPassword Старый пароль пользователя.
-     * @param newPassword Новый пароль пользователя.
-     * @throws ValidationException Если старый пароль неверен или новый пароль пуст.
+     * @throws ValidationException Если старый пароль или новый пароль не прошли валидацию.
      */
     public void changePassword(User user, String oldPassword, String newPassword) {
         if (oldPassword.isEmpty() || !oldPassword.equals(user.getPassword())) {
-            throw new ValidationException("Неверный старый пароль\n");
+            throw new ValidationException("Неверный старый пароль");
         }
         if (newPassword.isEmpty()) {
-            throw new ValidationException("Неверное значение\n");
+            throw new ValidationException("Неверное значение");
         }
         user.setPassword(newPassword);
         if (user.getPassword().equals(newPassword)) {
@@ -51,11 +46,9 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * Регистрирует нового пользователя с заданным логином и паролем.
+     * {@inheritDoc}
      * Если пользователь с таким логином уже существует, выводит сообщение об этом.
      *
-     * @param login Логин нового пользователя.
-     * @param password Пароль нового пользователя.
      * @throws ValidationException Если данные нового пользователя не прошли валидацию.
      */
     public void registerUser(String login, String password) throws ValidationException {
@@ -72,37 +65,31 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * Возвращает пользователя с заданным логином.
+     * {@inheritDoc}
      * Если пользователь с таким логином не найден, выводит сообщение об этом.
-     *
-     * @param login Логин пользователя.
-     * @return Optional, содержащий пользователя, если он найден, или пустой Optional, если пользователь не найден.
      */
-    public Optional<User> getUser(String login) {
-        Optional<User> user = repository.getUser(login);
-        user.ifPresentOrElse(
-                u -> {},
-                () -> System.out.println("Неверный логин.\n")
-        );
-        return user;
+    public Optional<User> getUserForAdmin(String login, User admin) {
+        if (admin.getRole() == Role.ADMIN) {
+            Optional<User> user = repository.getUser(login);
+            if (user.isEmpty()) {
+                System.out.println("Такого пользователя не существует");
+            }
+            return user;
+        } else {
+            return Optional.empty();
+        }
     }
 
     /**
-     * Метод возвращает список всех логинов пользователей.
-     *
-     * @return Список логинов всех пользователей.
+     * {@inheritDoc}
      */
     public List<String> getLogins() {
         return repository.getAllLogins();
     }
 
     /**
-     * Возвращает пользователя с заданным логином и паролем.
+     * {@inheritDoc}
      * Если пользователь с таким логином не найден или заданный пароль не совпадает, выводит сообщение об этом.
-     *
-     * @param login Логин пользователя.
-     * @param password Пароль пользователя.
-     * @return Optional, содержащий пользователя, если он найден, или пустой Optional, если пользователь не найден.
      */
     public Optional<User> getUser(String login, String password) {
         Optional<User> user = repository.getUser(login);
