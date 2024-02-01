@@ -83,7 +83,7 @@ public class UserServiceImpl implements UserService {
     /**
      * {@inheritDoc}
      */
-    public List<String> getLogins() {
+    public List<String> getAllLogins() {
         return repository.getAllLogins();
     }
 
