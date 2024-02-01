@@ -139,7 +139,7 @@ public class Main {
      */
     private static void processAdminActions(Scanner scanner, User admin) {
         System.out.print("Введите логин интересующего вас пользователя: ");
-        System.out.println(userService.getLogins());
+        System.out.println(userService.getAllLogins());
         String login = scanner.nextLine();
         Optional<User> user = userService.getUserForAdmin(login, admin);
         user.ifPresent(value -> {

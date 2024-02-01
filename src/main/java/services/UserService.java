@@ -52,5 +52,5 @@ public interface UserService {
      *
      * @return Список всех логинов пользователей.
      */
-    List<String> getLogins();
+    List<String> getAllLogins();
 }
