@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0
+      author: Danis Abdulgazizov
+      changes:
+        - sql:
+            dbms: postgresql
+            endDelimiter: ;
+            sql: create schema service_schema
+        - sql:
+            dbms: postgresql
+            endDelimiter: ;
+            sql: create schema app_schema

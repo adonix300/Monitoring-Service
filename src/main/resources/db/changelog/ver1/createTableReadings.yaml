@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2
+      author: Danis Abdulgazizov
+      changes:
+        - createTable:
+            tableName: readings
+            schemaName: app_schema
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_readings
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: month
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: readings
+            baseColumnNames: user_id
+            constraintName: fk_readings_users
+            referencedTableName: users
+            referencedColumnNames: id
+        - createSequence:
+            sequenceName: readings_seq
+            schemaName: app_schema
+            startValue: 1
+            incrementBy: 1
