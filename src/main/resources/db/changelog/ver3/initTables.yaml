@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 3
+      author: Danis Abdulgazizov
+      changes:
+        - insert:
+            schemaName: app_schema
+            tableName: users
+            columns:
+              - column:
+                  name: login
+                  value: "admin"
+              - column:
+                  name: password
+                  value: "admin"
+              - column:
+                  name: role
+                  value: "ADMIN"
+        - insert:
+            tableName: users
+            schemaName: app_schema
+            columns:
+              - column:
+                  name: login
+                  value: "login"
+              - column:
+                  name: password
+                  value: "pass"
+              - column:
+                  name: role
+                  value: "USER"

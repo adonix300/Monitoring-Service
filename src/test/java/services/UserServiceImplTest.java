@@ -46,7 +46,7 @@ public class UserServiceImplTest {
     @Test
     @DisplayName("Проверка смены пароля")
     public void testChangePassword() {
-        service.changePassword(user, "testPassword", "newPassword");
+        service.updatePassword(user, "testPassword", "newPassword");
 
         assertEquals("newPassword", user.getPassword());
     }
@@ -54,13 +54,13 @@ public class UserServiceImplTest {
     @Test
     @DisplayName("Проверка смены пароля с неверным старым паролем")
     public void testChangePasswordWithWrongOldPassword() {
-        assertThrows(ValidationException.class, () -> service.changePassword(user, "wrongPassword", "newPassword"));
+        assertThrows(ValidationException.class, () -> service.updatePassword(user, "wrongPassword", "newPassword"));
     }
 
     @Test
     @DisplayName("Проверка смены пароля с пустым новым паролем")
     public void testChangePasswordWithEmptyNewPassword() {
-        assertThrows(ValidationException.class, () -> service.changePassword(user, "testPassword", ""));
+        assertThrows(ValidationException.class, () -> service.updatePassword(user, "testPassword", ""));
     }
 
     @Test

@@ -1,3 +1,5 @@
+import config.DataSourceFactory;
+import config.LiquibaseRunner;
 import enums.Role;
 import exceptions.ValidationException;
 import logger.Logger;
@@ -13,18 +15,22 @@ import services.impl.UserServiceImpl;
 import validators.ReadingsValidator;
 import validators.UserValidator;
 
+import javax.sql.DataSource;
 import java.time.DateTimeException;
 import java.time.Month;
+import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
 public class Main {
-    private static final UserService userService = new UserServiceImpl(new UserRepositoryImpl(), new UserValidator());
-    private static final ReadingsService readingsService = new ReadingsServiceImpl(new ReadingsRepositoryImpl(), new ReadingsValidator());
+    private static final DataSource dataSource = DataSourceFactory.createDataSource();
     private static final Logger logger = LoggerImpl.getInstance();
+    private static final UserService userService = new UserServiceImpl(new UserRepositoryImpl(dataSource), new UserValidator());
+    private static final ReadingsService readingsService = new ReadingsServiceImpl(new ReadingsRepositoryImpl(dataSource), new ReadingsValidator());
 
     public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
+            LiquibaseRunner.updateDatabase();
             runApplication(scanner);
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -38,6 +44,7 @@ public class Main {
      */
     private static void runApplication(Scanner scanner) {
         logger.info("Приложение запущено");
+
         while (true) {
             System.out.println("Для авторизации нажмите 1\n" +
                     "Для регистрации нажмите 2\n" +
@@ -133,19 +140,23 @@ public class Main {
 
     /**
      * Метод обрабатывает действия администратора.
-     * Администратор вводит логин пользователя, данные которого хочет просмотреть.
+     * Администратор вводит id пользователя, данные которого хочет просмотреть.
      *
      * @param scanner Объект Scanner для чтения ввода администратора.
      */
     private static void processAdminActions(Scanner scanner, User admin) {
-        System.out.print("Введите логин интересующего вас пользователя: ");
-        System.out.println(userService.getAllLogins());
-        String login = scanner.nextLine();
-        Optional<User> user = userService.getUserForAdmin(login, admin);
+        List<String> users = userService.getAllLogins();
+        System.out.print("Введите id интересующего вас пользователя:\n");
+        for (int i = 0; i < users.size(); i++) {
+            System.out.println(i + " - " + users.get(i));
+        }
+        String id = scanner.nextLine();
+        Optional<User> user = userService.getUserForAdmin(users.get(Integer.parseInt(id)), admin);
         user.ifPresent(value -> {
             logger.info("Админ выбрал пользователя: " + user.get().getLogin());
             printAllReadings(user.get());
         });
+
     }
 
     /**
@@ -205,7 +216,7 @@ public class Main {
             System.out.print("Введите новый пароль: ");
             String newPassword = scanner.nextLine();
 
-            userService.changePassword(user, oldPassword, newPassword);
+            userService.updatePassword(user, oldPassword, newPassword);
         } catch (ValidationException e) {
             System.out.println(e.getMessage());
         }

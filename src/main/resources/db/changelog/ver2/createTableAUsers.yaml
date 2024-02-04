@@ -4,8 +4,8 @@ databaseChangeLog:
       author: Danis Abdulgazizov
       changes:
         - createTable:
-            tableName: users
             schemaName: app_schema
+            tableName: users
             columns:
               - column:
                   name: id
@@ -30,8 +30,8 @@ databaseChangeLog:
                   type: VARCHAR(255)
                   constraints:
                     nullable: false
-        - createSequence:
-            sequenceName: users_seq
-            schemaName: app_schema
-            startValue: 1
-            incrementBy: 1
+#        - createSequence:
+#            sequenceName: users_seq
+#            schemaName: app_schema
+#            startValue: 1
+#            incrementBy: 1

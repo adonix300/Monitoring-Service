@@ -37,16 +37,3 @@ databaseChangeLog:
                   type: DOUBLE
                   constraints:
                     nullable: false
-#        - addForeignKeyConstraint:
-#            baseTableSchemaName: app_schema
-#            baseTableName: readings
-#            baseColumnNames: user_id
-#            constraintName: fk_readings_users
-#            referencedTableSchemaName: app_schema
-#            referencedTableName: users
-#            referencedColumnNames: id
-        - createSequence:
-            sequenceName: readings_seq
-            schemaName: app_schema
-            startValue: 1
-            incrementBy: 1

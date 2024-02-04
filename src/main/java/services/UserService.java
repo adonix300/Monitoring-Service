@@ -19,7 +19,7 @@ public interface UserService {
      * @param oldPassword Старый пароль пользователя.
      * @param newPassword Новый пароль пользователя.
      */
-    void changePassword(User user, String oldPassword, String newPassword);
+    void updatePassword(User user, String oldPassword, String newPassword);
 
     /**
      * Регистрирует нового пользователя.

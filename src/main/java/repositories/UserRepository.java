@@ -17,6 +17,9 @@ public interface UserRepository {
      */
     void addUser(User user);
 
+    //TODO
+    void updatePassword(User user, String password);
+
     /**
      * Получает пользователя из репозитория по логину.
      *

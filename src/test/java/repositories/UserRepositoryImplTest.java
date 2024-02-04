@@ -1,5 +1,6 @@
 package repositories;
 
+import config.DataSourceFactory;
 import enums.Role;
 import models.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -7,18 +8,20 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import repositories.impl.UserRepositoryImpl;
 
+import javax.sql.DataSource;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class UserRepositoryImplTest {
+    DataSource dataSource = DataSourceFactory.createDataSource();
     private UserRepositoryImpl repository;
     private User user;
 
     @BeforeEach
     public void setUp() {
-        repository = new UserRepositoryImpl();
+        repository = new UserRepositoryImpl(dataSource);
         user = new User("testLogin", "testPassword", Role.USER);
     }
 

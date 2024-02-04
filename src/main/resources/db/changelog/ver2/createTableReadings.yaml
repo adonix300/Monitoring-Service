@@ -45,8 +45,8 @@ databaseChangeLog:
 #            referencedTableSchemaName: app_schema
 #            referencedTableName: users
 #            referencedColumnNames: id
-        - createSequence:
-            sequenceName: readings_seq
-            schemaName: app_schema
-            startValue: 1
-            incrementBy: 1
+#        - createSequence:
+#            sequenceName: readings_seq
+#            schemaName: app_schema
+#            startValue: 1
+#            incrementBy: 1

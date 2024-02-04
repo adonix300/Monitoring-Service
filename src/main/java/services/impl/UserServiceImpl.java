@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
      *
      * @throws ValidationException Если старый пароль или новый пароль не прошли валидацию.
      */
-    public void changePassword(User user, String oldPassword, String newPassword) {
+    public void updatePassword(User user, String oldPassword, String newPassword) {
         if (oldPassword.isEmpty() || !oldPassword.equals(user.getPassword())) {
             throw new ValidationException("Неверный старый пароль");
         }
@@ -39,10 +39,14 @@ public class UserServiceImpl implements UserService {
             throw new ValidationException("Неверное значение");
         }
         user.setPassword(newPassword);
+//        repository.updatePassword(user, newPassword);
         if (user.getPassword().equals(newPassword)) {
             System.out.println("Пароль успешно сменен.");
             logger.info("Пользователь " + user.getLogin() + " сменил пароль.");
         }
+}
+    public void updatePassword(String userLogin, String oldPassword, String newPassword) {
+
     }
 
     /**
@@ -51,6 +55,7 @@ public class UserServiceImpl implements UserService {
      *
      * @throws ValidationException Если данные нового пользователя не прошли валидацию.
      */
+    //TODO System.out.println("Вы успешно зарегистрировались.\n");происходит всегда
     public void registerUser(String login, String password) throws ValidationException {
         Optional<User> user = repository.getUser(login);
         if (user.isEmpty()) {

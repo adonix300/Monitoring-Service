@@ -10,12 +10,12 @@ import java.util.Objects;
  */
 public class User {
     private final String login;
-    private String password;
+//    private String password;
     private final Role role;
 
     public User(String login, String password, Role role) {
         this.login = login;
-        this.password = password;
+//        this.password = password;
         this.role = role;
     }
 
@@ -27,24 +27,37 @@ public class User {
         return login;
     }
 
-    public String getPassword() {
-        return password;
-    }
+//    public String getPassword() {
+//        return password;
+//    }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+//    public void setPassword(String password) {
+//        this.password = password;
+//    }
+
+//    @Override
+//    public boolean equals(Object o) {
+//        if (this == o) return true;
+//        if (o == null || getClass() != o.getClass()) return false;
+//        User user = (User) o;
+//        return Objects.equals(login, user.login) && Objects.equals(password, user.password) && role == user.role;
+//    }
+
+//    @Override
+//    public int hashCode() {
+//        return Objects.hash(login, password, role);
+//    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return Objects.equals(login, user.login) && Objects.equals(password, user.password) && role == user.role;
+        return Objects.equals(login, user.login) && role == user.role;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(login, password, role);
+        return Objects.hash(login, role);
     }
 }
