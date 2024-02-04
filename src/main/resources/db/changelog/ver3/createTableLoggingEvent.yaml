@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 4
+      author: Danis Abdulgazizov
+      changes:
+        - createTable:
+            tableName: logging_event
+            schemaName: service_schema
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: date
+                  type: TIMESTAMP
+              - column:
+                  name: log_level
+                  type: VARCHAR(50)
+              - column:
+                  name: logger
+                  type: VARCHAR(255)
+              - column:
+                  name: message
+                  type: TEXT
+              - column:
+                  name: exception
+                  type: TEXT

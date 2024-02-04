@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2
+      author: Danis Abdulgazizov
+      changes:
+        - createTable:
+            schemaName: app_schema
+            tableName: readings
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_readings
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_readings_users
+                    referencedTableSchemaName: app_schema
+                    references: app_schema.users(id)
+              - column:
+                  name: month
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: DOUBLE
+                  constraints:
+                    nullable: false

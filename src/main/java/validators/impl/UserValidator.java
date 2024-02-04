@@ -1,4 +1,4 @@
-package validators;
+package validators.impl;
 
 import exceptions.ValidationException;
 import models.User;
@@ -17,11 +17,8 @@ public class UserValidator implements Validator<User> {
      */
     @Override
     public void validate(User user) {
-        if (user.getLogin().isEmpty()) {
+        if (user.login().isEmpty()) {
             throw new ValidationException("Логин не может быть пустым.\n");
-        }
-        if (user.getPassword().isEmpty()) {
-            throw new ValidationException("Пароль не может быть пустым.\n");
         }
     }
 }

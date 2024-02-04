@@ -3,127 +3,120 @@ package services;
 import enums.Role;
 import exceptions.ValidationException;
 import models.User;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import repositories.UserRepository;
 import services.impl.UserServiceImpl;
 import validators.Validator;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class UserServiceImplTest {
+@ExtendWith(MockitoExtension.class)
+class UserServiceImplTest {
+
     @Mock
-    private UserRepository repository;
+    private UserRepository userRepository;
+
     @Mock
-    private Validator<User> validator;
+    private Validator<User> userValidator;
+
     @InjectMocks
-    private UserServiceImpl service;
-    private User user;
-    private User admin;
+    private UserServiceImpl userService;
 
-    private AutoCloseable closeable;
+    private final User testUser = new User("testUser", Role.USER);
 
-    @BeforeEach
-    public void setUp() {
-        closeable = MockitoAnnotations.openMocks(this);
-        user = new User("testLogin", "testPassword", Role.USER);
-        admin = new User("admin", "admin", Role.ADMIN);
-    }
+    @Test
+    @DisplayName("Успешное обновление пароля")
+    void updatePasswordSuccess() {
+        when(userRepository.getPasswordByLogin(testUser.login())).thenReturn("oldPassword");
+        doNothing().when(userRepository).updatePassword(testUser, "newPassword");
 
-    @AfterEach
-    public void closeResources() throws Exception {
-        closeable.close();
+        userService.updatePassword(testUser, "oldPassword", "newPassword");
+
+        verify(userRepository, times(1)).updatePassword(testUser, "newPassword");
     }
 
     @Test
-    @DisplayName("Проверка смены пароля")
-    public void testChangePassword() {
-        service.changePassword(user, "testPassword", "newPassword");
+    @DisplayName("Обновление пароля с неверным старым паролем")
+    void updatePasswordWrongOldPassword() {
+        when(userRepository.getPasswordByLogin(testUser.login())).thenReturn("wrongPassword");
 
-        assertEquals("newPassword", user.getPassword());
+        assertThrows(ValidationException.class, () -> userService.updatePassword(testUser, "oldPassword", "newPassword"));
     }
 
     @Test
-    @DisplayName("Проверка смены пароля с неверным старым паролем")
-    public void testChangePasswordWithWrongOldPassword() {
-        assertThrows(ValidationException.class, () -> service.changePassword(user, "wrongPassword", "newPassword"));
+    @DisplayName("Успешная регистрация нового пользователя")
+    void registerUserSuccess() {
+        when(userRepository.getUser("newUser")).thenReturn(Optional.empty());
+        doNothing().when(userValidator).validate(any(User.class));
+        doNothing().when(userRepository).createUser(any(User.class), eq("password"));
+
+        userService.registerUser("newUser", "password");
+
+        verify(userRepository, times(1)).createUser(any(User.class), eq("password"));
     }
 
     @Test
-    @DisplayName("Проверка смены пароля с пустым новым паролем")
-    public void testChangePasswordWithEmptyNewPassword() {
-        assertThrows(ValidationException.class, () -> service.changePassword(user, "testPassword", ""));
+    @DisplayName("Регистрация пользователя с существующим логином")
+    void registerUserExistingLogin() {
+        when(userRepository.getUser("existingUser")).thenReturn(Optional.of(testUser));
+
+        userService.registerUser("existingUser", "password");
+
+        verify(userRepository, never()).createUser(any(User.class), anyString());
     }
 
     @Test
-    @DisplayName("Проверка регистрации пользователя")
-    public void testRegisterUser() throws ValidationException {
-        when(repository.getUser("testLogin")).thenReturn(Optional.empty());
+    @DisplayName("Получение пользователя администратором")
+    void getUserForAdminSuccess() {
+        User adminUser = new User("adminUser", Role.ADMIN);
+        when(userRepository.getUser("testUser")).thenReturn(Optional.of(testUser));
 
-        service.registerUser("testLogin", "testPassword");
-
-        verify(validator, times(1)).validate(user);
-        verify(repository, times(1)).addUser(user);
-    }
-
-    @Test
-    @DisplayName("Проверка регистрации пользователя с существующим логином")
-    public void testRegisterUserWithExistingLogin() throws ValidationException {
-        when(repository.getUser("testLogin")).thenReturn(Optional.of(user));
-
-        service.registerUser("testLogin", "testPassword");
-
-        verify(validator, never()).validate(user);
-        verify(repository, never()).addUser(user);
-    }
-
-    @Test
-    @DisplayName("Проверка получения пользователя для админа по логину")
-    public void testGetUserForAdmin() {
-        when(repository.getUser("testLogin")).thenReturn(Optional.of(user));
-
-        Optional<User> result = service.getUserForAdmin("testLogin", admin);
+        Optional<User> result = userService.getUserForAdmin("testUser", adminUser);
 
         assertTrue(result.isPresent());
-        assertEquals(user, result.get());
+        assertEquals(testUser, result.get());
     }
 
     @Test
-    @DisplayName("Проверка получения пользователя для админа с неверным логином")
-    public void testGetUserForAdminWithWrongLogin() {
-        when(repository.getUser("wrongLogin")).thenReturn(Optional.empty());
+    @DisplayName("Попытка получения пользователя не администратором")
+    void getUserForAdminNotAdmin() {
+        User regularUser = new User("regularUser", Role.USER);
 
-        Optional<User> result = service.getUserForAdmin("wrongLogin", admin);
+        Optional<User> result = userService.getUserForAdmin("testUser", regularUser);
 
         assertFalse(result.isPresent());
     }
 
     @Test
-    @DisplayName("Проверка аутентификации пользователя")
-    public void testGetUserWithPassword() {
-        when(repository.getUser("testLogin")).thenReturn(Optional.of(user));
+    @DisplayName("Успешное получение пользователя по логину и паролю")
+    void getUserSuccess() {
+        when(userRepository.getUser("testUser")).thenReturn(Optional.of(testUser));
+        when(userRepository.getPasswordByLogin("testUser")).thenReturn("password");
 
-        Optional<User> result = service.getUser("testLogin", "testPassword");
+        Optional<User> result = userService.getUser("testUser", "password");
 
         assertTrue(result.isPresent());
-        assertEquals(user, result.get());
+        assertEquals(testUser, result.get());
     }
 
     @Test
-    @DisplayName("Проверка аутентификации пользователя с неверным паролем")
-    public void testGetUserWithWrongPassword() {
-        when(repository.getUser("testLogin")).thenReturn(Optional.of(user));
+    @DisplayName("Получение пользователя с неверным паролем")
+    void getUserWrongPassword() {
+        when(userRepository.getUser("testUser")).thenReturn(Optional.of(testUser));
+        when(userRepository.getPasswordByLogin("testUser")).thenReturn("wrongPassword");
 
-        Optional<User> result = service.getUser("testLogin", "wrongPassword");
+        Optional<User> result = userService.getUser("testUser", "password");
 
         assertFalse(result.isPresent());
     }
+
 }

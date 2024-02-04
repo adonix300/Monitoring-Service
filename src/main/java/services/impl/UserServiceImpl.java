@@ -31,18 +31,15 @@ public class UserServiceImpl implements UserService {
      *
      * @throws ValidationException Если старый пароль или новый пароль не прошли валидацию.
      */
-    public void changePassword(User user, String oldPassword, String newPassword) {
-        if (oldPassword.isEmpty() || !oldPassword.equals(user.getPassword())) {
+    public void updatePassword(User user, String oldPassword, String newPassword) {
+        if (!oldPassword.equals(repository.getPasswordByLogin(user.login()))) {
             throw new ValidationException("Неверный старый пароль");
         }
-        if (newPassword.isEmpty()) {
+        if (oldPassword.isEmpty() || newPassword.isEmpty()) {
             throw new ValidationException("Неверное значение");
         }
-        user.setPassword(newPassword);
-        if (user.getPassword().equals(newPassword)) {
-            System.out.println("Пароль успешно сменен.");
-            logger.info("Пользователь " + user.getLogin() + " сменил пароль.");
-        }
+        repository.updatePassword(user, newPassword);
+        System.out.println("Пароль успешно сменен");
     }
 
     /**
@@ -54,9 +51,12 @@ public class UserServiceImpl implements UserService {
     public void registerUser(String login, String password) throws ValidationException {
         Optional<User> user = repository.getUser(login);
         if (user.isEmpty()) {
-            user = Optional.of(new User(login, password, Role.USER));
+            user = Optional.of(new User(login, Role.USER));
             validator.validate(user.get());
-            repository.addUser(user.get());
+            if (password.isEmpty()) {
+                throw new ValidationException("Неверное значение пароля");
+            }
+            repository.createUser(user.get(), password);
             System.out.println("Вы успешно зарегистрировались.\n");
             logger.info("Пользователь " + login + " успешно зарегистрировался.");
         } else {
@@ -69,7 +69,7 @@ public class UserServiceImpl implements UserService {
      * Если пользователь с таким логином не найден, выводит сообщение об этом.
      */
     public Optional<User> getUserForAdmin(String login, User admin) {
-        if (admin.getRole() == Role.ADMIN) {
+        if (admin.role() == Role.ADMIN) {
             Optional<User> user = repository.getUser(login);
             if (user.isEmpty()) {
                 System.out.println("Такого пользователя не существует");
@@ -93,8 +93,7 @@ public class UserServiceImpl implements UserService {
      */
     public Optional<User> getUser(String login, String password) {
         Optional<User> user = repository.getUser(login);
-        if (user.isPresent() && user.get().getPassword().equals(password)) {
-            logger.info("Пользователь " + login + " прошел аутентификацию. ");
+        if (user.isPresent() && password.equals(repository.getPasswordByLogin(login))) {
             return user;
         } else {
             System.out.println("Неверный логин или пароль.\n");

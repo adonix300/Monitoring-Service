@@ -5,6 +5,7 @@ import models.Readings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import validators.impl.ReadingsValidator;
 
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -1,7 +1,10 @@
+import config.DataSourceFactory;
+import config.LiquibaseRunner;
 import enums.Role;
 import exceptions.ValidationException;
 import logger.Logger;
 import models.Readings;
+import org.slf4j.LoggerFactory;
 import services.ReadingsService;
 import services.UserService;
 import logger.impl.LoggerImpl;
@@ -10,21 +13,28 @@ import repositories.impl.ReadingsRepositoryImpl;
 import repositories.impl.UserRepositoryImpl;
 import services.impl.ReadingsServiceImpl;
 import services.impl.UserServiceImpl;
-import validators.ReadingsValidator;
-import validators.UserValidator;
+import validators.impl.ReadingsValidator;
+import validators.impl.UserValidator;
 
+
+import javax.sql.DataSource;
 import java.time.DateTimeException;
 import java.time.Month;
+import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
 public class Main {
-    private static final UserService userService = new UserServiceImpl(new UserRepositoryImpl(), new UserValidator());
-    private static final ReadingsService readingsService = new ReadingsServiceImpl(new ReadingsRepositoryImpl(), new ReadingsValidator());
+//    private static final Logger logger = (Logger) LoggerFactory.getLogger(Main.class);
+
+    private static final DataSource dataSource = DataSourceFactory.createDataSource();
     private static final Logger logger = LoggerImpl.getInstance();
+    private static final UserService userService = new UserServiceImpl(new UserRepositoryImpl(dataSource), new UserValidator());
+    private static final ReadingsService readingsService = new ReadingsServiceImpl(new ReadingsRepositoryImpl(dataSource, new UserRepositoryImpl(dataSource)), new ReadingsValidator());
 
     public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
+            LiquibaseRunner.updateDatabase();
             runApplication(scanner);
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -38,6 +48,7 @@ public class Main {
      */
     private static void runApplication(Scanner scanner) {
         logger.info("Приложение запущено");
+
         while (true) {
             System.out.println("Для авторизации нажмите 1\n" +
                     "Для регистрации нажмите 2\n" +
@@ -73,7 +84,14 @@ public class Main {
         String login = scanner.nextLine();
         System.out.print("Введите ваш пароль: ");
         String password = scanner.nextLine();
-        return userService.getUser(login, password);
+        Optional<User> user = userService.getUser(login, password);
+
+        user.ifPresentOrElse(
+                u -> logger.info("Пользователь " + u.login() + " успешно авторизовался."),
+                () -> logger.warn("Неудачная попытка входа для логина: " + login)
+        );
+
+        return user;
     }
 
     /**
@@ -89,7 +107,9 @@ public class Main {
 
         try {
             userService.registerUser(login, password);
+            logger.info("Новый пользователь зарегистрирован: " + login);
         } catch (Exception e) {
+            logger.error("Ошибка при регистрации нового пользователя: " + login + "," + e);
             System.out.println(e.getMessage());
         }
     }
@@ -101,9 +121,9 @@ public class Main {
      * @param user    Пользователь, который должен быть перенаправлен.
      */
     private static void redirectToUserPanel(Scanner scanner, User user) {
-        if (user.getRole() == Role.USER) {
+        if (user.role() == Role.USER) {
             processUsersAction(scanner, user);
-        } else if (user.getRole() == Role.ADMIN) {
+        } else if (user.role() == Role.ADMIN) {
             redirectToAdminPanel(scanner, user);
         }
     }
@@ -116,7 +136,8 @@ public class Main {
      */
     private static void redirectToAdminPanel(Scanner scanner, User admin) {
         while (true) {
-            System.out.println("\nДля просмотра показаний пользователей нажмите 1.\n" +
+            System.out.println("\n" +
+                    "Для просмотра показаний пользователей нажмите 1.\n" +
                     "Для выхода нажмите 2.");
             String action = scanner.nextLine();
             switch (action) {
@@ -133,19 +154,50 @@ public class Main {
 
     /**
      * Метод обрабатывает действия администратора.
-     * Администратор вводит логин пользователя, данные которого хочет просмотреть.
+     * Администратор вводит id пользователя, данные которого хочет просмотреть.
      *
      * @param scanner Объект Scanner для чтения ввода администратора.
      */
     private static void processAdminActions(Scanner scanner, User admin) {
-        System.out.print("Введите логин интересующего вас пользователя: ");
-        System.out.println(userService.getAllLogins());
-        String login = scanner.nextLine();
-        Optional<User> user = userService.getUserForAdmin(login, admin);
-        user.ifPresent(value -> {
-            logger.info("Админ выбрал пользователя: " + user.get().getLogin());
-            printAllReadings(user.get());
-        });
+        try {
+            List<String> users = userService.getAllLogins();
+            if (users.isEmpty()) {
+                System.out.println("Список пользователей пуст.");
+                return;
+            }
+
+            System.out.print("Введите id интересующего вас пользователя:\n");
+            for (int i = 0; i < users.size(); i++) {
+                System.out.println(i + " - " + users.get(i));
+            }
+
+            String id = scanner.nextLine();
+            int userId;
+            try {
+                userId = Integer.parseInt(id);
+            } catch (NumberFormatException e) {
+                System.out.println("Ошибка: введенный id не является числом.");
+                return;
+            }
+
+            if (userId < 0 || userId >= users.size()) {
+                System.out.println("Ошибка: выбранный id пользователя вне допустимого диапазона.");
+                return;
+            }
+
+            Optional<User> user = userService.getUserForAdmin(users.get(userId), admin);
+            if (user.isPresent()) {
+                User u = user.get();
+                logger.info("Админ выбрал пользователя: " + u.login());
+                printAllReadings(u);
+            } else {
+                System.out.println("Пользователь не найден.");
+            }
+        } catch (Exception e) {
+//            logger.error("Произошла неизвестная ошибка: " + e.getMessage());
+        }
+
+
     }
 
     /**
@@ -184,7 +236,7 @@ public class Main {
                     updateUserPassword(scanner, user);
                     break;
                 case "6":
-                    logger.info("Пользователь " + user.getLogin() + " вышел.");
+                    logger.info("Пользователь " + user.login() + " вышел.");
                     return;
                 default:
                     System.out.println("Вы ввели неправильное значение");
@@ -205,8 +257,10 @@ public class Main {
             System.out.print("Введите новый пароль: ");
             String newPassword = scanner.nextLine();
 
-            userService.changePassword(user, oldPassword, newPassword);
+            userService.updatePassword(user, oldPassword, newPassword);
+            logger.info("Пользователь " + user.login() + " успешно обновил пароль.");
         } catch (ValidationException e) {
+            logger.warn("Ошибка при обновлении пароля для пользователя: " + user.login() + ", " + e);
             System.out.println(e.getMessage());
         }
     }
@@ -238,11 +292,12 @@ public class Main {
 
             // Здесь мы сможем расширить перечень подаваемых показаний
             readingsService.addReadings(user, month, readings);
-        } catch (NumberFormatException e) {
-            System.out.println("Введены некорректные данные. Пожалуйста, введите числа.");
-        } catch (DateTimeException e) {
-            System.out.println("Введен некорректный номер месяца. Пожалуйста, введите число от 1 до 12.");
+            logger.info("Пользователь " + user.login() + " добавил новые показания за " + month);
+        } catch (NumberFormatException | DateTimeException e) {
+            logger.warn("Некорректный ввод данных пользователем: " + user.login() + "," + e);
+            System.out.println(e.getMessage());
         } catch (Exception e) {
+            logger.error("Ошибка при добавлении показаний для пользователя: " + user.login() + "," + e);
             System.out.println(e.getMessage());
         }
     }
@@ -254,8 +309,10 @@ public class Main {
      * @param user Пользователь, для которого нужно получить и вывести показания.
      */
     private static void printAllReadings(User user) {
+        logger.info("Запрос всех показаний для пользователя: " + user.login());
         System.out.print(readingsService.getAllReadings(user));
     }
+
 
     /**
      * Получает и выводит последние показания пользователя.
@@ -264,8 +321,15 @@ public class Main {
      * @param user Пользователь, для которого нужно получить и вывести показания.
      */
     private static void getActualReadings(User user) {
-        readingsService.getLastReadings(user).ifPresent(System.out::println);
+        readingsService.getLastReadings(user).ifPresentOrElse(
+                readings -> {
+                    logger.info("Запрос последних показаний для пользователя: " + user.login());
+                    System.out.println(readings);
+                },
+                () -> logger.info("Последние показания для пользователя " + user.login() + " отсутствуют")
+        );
     }
+
 
     /**
      * Получает и выводит показания пользователя за указанный месяц.
@@ -278,13 +342,23 @@ public class Main {
         try {
             System.out.print("Напишите номер месяца, который вас интересует: ");
             Month month = Month.of(Integer.parseInt(scanner.nextLine()));
-            readingsService.getReadingsByMonth(user, month).ifPresent(System.out::println);
+            readingsService.getReadingsByMonth(user, month).ifPresentOrElse(
+                    readings -> {
+                        logger.info("Запрос показаний для пользователя: " + user.login() + " за месяц: " + month);
+                        System.out.println(readings);
+                    },
+                    () -> logger.info("Показания для пользователя " + user.login() + " за месяц " + month + " отсутствуют")
+            );
         } catch (DateTimeException e) {
+            logger.warn("Введен некорректный номер месяца пользователем: " + user.login() + "," + e);
             System.out.println("Ошибка: введен некорректный номер месяца. Пожалуйста, введите число от 1 до 12.");
         } catch (NumberFormatException e) {
+            logger.warn("Введены некорректные данные пользователем: " + user.login() + "," + e);
             System.out.println("Ошибка: введены некорректные данные. Пожалуйста, введите числа.");
         } catch (Exception e) {
+            logger.error("Произошла ошибка при запросе показаний для пользователя: " + user.login() + "," + e);
             System.out.println("Произошла ошибка: " + e.getMessage());
         }
     }
+
 }

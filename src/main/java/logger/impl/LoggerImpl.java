@@ -71,4 +71,12 @@ public class LoggerImpl implements Logger {
     public void info(String message) {
         log("INFO : " + message);
     }
+
+    public void warn(String message) {
+        log("WARN : " + message);
+    }
+
+    public void error(String message) {
+        log("ERROR : " + message);
+    }
 }
