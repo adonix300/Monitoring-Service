@@ -1,10 +1,12 @@
 package repositories.impl;
 
+import exceptions.ValidationException;
 import logger.Logger;
 import logger.impl.LoggerImpl;
 import models.Readings;
 import models.User;
 import repositories.ReadingsRepository;
+import repositories.UserRepository;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -13,7 +15,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Month;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -22,37 +23,40 @@ import java.util.Optional;
  * Хранит показания всех пользователей.
  */
 public class ReadingsRepositoryImpl implements ReadingsRepository {
+    private final UserRepository userRepository;
     private final Logger logger = LoggerImpl.getInstance();
     private final DataSource dataSource;
 
+    /**
+     * SQL-запрос для вставки новых показаний в базу данных.
+     * Запрос добавляет записи показаний для пользователя с указанным идентификатором, месяцем, типом и значением.
+     */
     private static final String INSERT_READINGS_SQL = "INSERT INTO app_schema.readings(user_id, month, type, value) VALUES (?, ?, ?, ?)";
+
+    /**
+     * SQL-запрос для выбора всех показаний по месяцам для определенного пользователя.
+     * Запрос извлекает месяц, тип и значение показаний для пользователя с указанным идентификатором, упорядоченные по месяцу.
+     */
     private static final String SELECT_ALL_READINGS_BY_USER_SQL = "SELECT month, type, value FROM app_schema.readings WHERE user_id = ? ORDER BY month";
+
+    /**
+     * SQL-запрос для выбора показаний по месяцу и пользователю.
+     * Запрос извлекает тип и значение показаний для пользователя с указанным идентификатором и месяцем.
+     */
     private static final String SELECT_READINGS_BY_USER_AND_MONTH_SQL = "SELECT type, value FROM app_schema.readings WHERE user_id = ? AND month = ?";
 
-    public ReadingsRepositoryImpl(DataSource dataSource) {
+
+    public ReadingsRepositoryImpl(DataSource dataSource, UserRepository repository) {
         this.dataSource = dataSource;
+        this.userRepository = repository;
     }
 
-    private int getUserIdByLogin(String login) {
-        String SELECT_USER_ID_SQL = "SELECT id FROM app_schema.users WHERE login = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(SELECT_USER_ID_SQL)) {
-
-            pstmt.setString(1, login);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("id");
-                }
-            }
-        } catch (SQLException e) {
-            // Обработка ошибки
-        }
-        return -1; // Вернуть -1 в случае неудачи
-    }
-
+    /**
+     *{@inheritDoc}
+     */
     @Override
     public void addReadings(User user, Month month, Readings readings) {
-        int userId = getUserIdByLogin(user.getLogin()); // Получаем user.id по логину
+        int userId = userRepository.getUserIdByLogin(user.login()); // Получаем user.id по логину
         Map<String, Double> readingsMap = readings.get();
 
         if (userId != -1) {
@@ -68,20 +72,23 @@ public class ReadingsRepositoryImpl implements ReadingsRepository {
                 }
 
             } catch (SQLException e) {
-                // Обработка ошибки
+                throw new ValidationException("Ошибка при добавлении показаний для пользователя: " + user.login(), e);
             }
         } else {
-            // Обработка случая, когда пользователь с заданным логином не найден
+            throw new ValidationException("Пользователь с логином " + user.login() + " не найден.");
         }
     }
 
+    /**
+     *{@inheritDoc}
+     */
     @Override
     public Optional<Map<Month, Readings>> getAllReadings(User user) {
         Map<Month, Readings> readingsMap = new HashMap<>();
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement("SELECT month, type, value FROM app_schema.readings WHERE user_id = ? ORDER BY month")) {
+             PreparedStatement pstmt = conn.prepareStatement(SELECT_ALL_READINGS_BY_USER_SQL)) {
 
-            pstmt.setInt(1, getUserIdByLogin(user.getLogin()));
+            pstmt.setInt(1, userRepository.getUserIdByLogin(user.login()));
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Month currentMonth = Month.valueOf(rs.getString("month").toUpperCase());
@@ -89,33 +96,38 @@ public class ReadingsRepositoryImpl implements ReadingsRepository {
                     readings.add(rs.getString("type"), rs.getDouble("value"));
                 }
             }
+            return Optional.of(readingsMap);
         } catch (SQLException e) {
-            //logger.error("Ошибка при получении показаний", e);
-            return Optional.empty();
+            throw new ValidationException("Ошибка при получении всех показаний для пользователя: " + user.login(), e);
         }
-        return Optional.of(readingsMap);
     }
 
+    /**
+     *{@inheritDoc}
+     */
     @Override
     public Optional<Readings> getReadingsByMonth(User user, Month month) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(SELECT_READINGS_BY_USER_AND_MONTH_SQL)) {
 
-            pstmt.setInt(1, getUserIdByLogin(user.getLogin()));
+            pstmt.setInt(1, userRepository.getUserIdByLogin(user.login()));
             pstmt.setString(2, month.toString());
+            Readings readings = new Readings();
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                Readings readings = new Readings();
+                boolean hasData = false;
                 while (rs.next()) {
                     readings.add(rs.getString("type"), rs.getDouble("value"));
+                    hasData = true;
                 }
-                return Optional.of(readings);
+                if (hasData) {
+                    return Optional.of(readings);
+                }
             }
-
+            return Optional.empty();
         } catch (SQLException e) {
-            //logger.error("Ошибка при получении показаний за месяц", e);
+            throw new ValidationException("Ошибка при получении показаний за месяц для пользователя: " + user.login(), e);
         }
-        return Optional.empty();
     }
 }
 

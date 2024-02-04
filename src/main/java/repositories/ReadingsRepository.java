@@ -1,5 +1,6 @@
 package repositories;
 
+import exceptions.ValidationException;
 import models.Readings;
 import models.User;
 
@@ -15,30 +16,31 @@ import java.util.Optional;
 public interface ReadingsRepository {
 
     /**
-     * Добавляет показания для указанного пользователя и месяца.
+     * Добавляет показания для пользователя и месяца.
      *
-     * @param user     Пользователь, для которого добавляются показания.
-     * @param month    Месяц, для которого добавляются показания.
-     * @param readings Показания, которые нужно добавить.
+     * @param user Пользователь, для которого добавляются показания.
+     * @param month Месяц, для которого добавляются показания.
+     * @param readings Объект Readings, содержащий показания.
+     * @throws ValidationException если произошла ошибка при доступе к базе данных или пользователь не найден.
      */
-    void addReadings(User user, Month month, Readings readings);
+    void addReadings(User user, Month month, Readings readings) throws ValidationException;
 
     /**
-     * Возвращает все показания для указанного пользователя.
+     * Получает все показания пользователя.
      *
-     * @param user Пользователь, для которого запрашиваются показания.
-     * @return Карта показаний, где ключ - это месяц, а значение - показания за этот месяц.
-     * Возвращает пустой Optional, если показания для пользователя отсутствуют.
+     * @param user Пользователь, показания которого необходимо получить.
+     * @return Optional, содержащий карту показаний по месяцам, или пустой Optional, если показания не найдены.
+     * @throws ValidationException если произошла ошибка при доступе к базе данных.
      */
-    Optional<Map<Month, Readings>> getAllReadings(User user);
+    Optional<Map<Month, Readings>> getAllReadings(User user) throws ValidationException;
 
     /**
-     * Возвращает показания для указанного пользователя и месяца.
+     * Получает показания пользователя за указанный месяц.
      *
-     * @param user  Пользователь, для которого запрашиваются показания.
-     * @param month Месяц, для которого запрашиваются показания.
-     * @return Optional, содержащий показания за указанный месяц,
-     * или пустой Optional, если показания для пользователя и месяца отсутствуют.
+     * @param user Пользователь, показания которого необходимо получить.
+     * @param month Месяц, для которого необходимо получить показания.
+     * @return Optional, содержащий объект Readings с показаниями за месяц, или пустой Optional, если показания не найдены.
+     * @throws ValidationException если произошла ошибка при доступе к базе данных.
      */
-    Optional<Readings> getReadingsByMonth(User user, Month month);
+    Optional<Readings> getReadingsByMonth(User user, Month month) throws ValidationException;
 }

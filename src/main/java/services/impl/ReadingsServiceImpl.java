@@ -37,11 +37,11 @@ public class ReadingsServiceImpl implements ReadingsService {
         validator.validate(readings);
         Optional<Map<Month, Readings>> allReadings = repository.getAllReadings(user);
         if (allReadings.isPresent() && allReadings.get().containsKey(month)) {
-            System.out.println("За этот месяц уже были поданы показания");
+            throw new ValidationException("За этот месяц уже были поданы показания");
         } else {
             repository.addReadings(user, month, readings);
             System.out.println("Данные успешно внесены");
-            logger.info("Пользователь " + user.getLogin() + " подал показания за " + month);
+            logger.info("Пользователь " + user.login() + " подал показания за " + month);
         }
     }
 
@@ -55,7 +55,7 @@ public class ReadingsServiceImpl implements ReadingsService {
         Optional<Map<Month, Readings>> readingsMap = repository.getAllReadings(user);
         if (readingsMap.isPresent()) {
             readingsMap.get().forEach(((month, readings) -> sb.append(month).append(":").append(readings).append("\n")));
-            logger.info("Пользователь " + user.getLogin() + " получил историю подачи показаний.");
+            logger.info("Пользователь " + user.login() + " получил историю подачи показаний.");
         } else {
             sb.append("Показаний не найдено.\n");
         }
@@ -75,7 +75,7 @@ public class ReadingsServiceImpl implements ReadingsService {
             for (var entry : allReadingsMap.get().entrySet()) {
                 lastReadings = Optional.ofNullable(entry.getValue());
             }
-            logger.info("Пользователь " + user.getLogin() + " получил актуальные показания.");
+            logger.info("Пользователь " + user.login() + " получил актуальные показания.");
         } else {
             System.out.println("Вы не подавали никаких показаний");
         }
@@ -89,12 +89,11 @@ public class ReadingsServiceImpl implements ReadingsService {
      */
     public Optional<Readings> getReadingsByMonth(User user, Month month) {
         Optional<Readings> readings = repository.getReadingsByMonth(user, month);
-        readings.ifPresentOrElse(
-                r -> {
-                    logger.info("Пользователь " + user.getLogin() + " получил показания за " + month);
-                },
-                () -> System.out.println("Вы не подавали показаний за этот месяц.")
-        );
-        return readings;
+        if (readings.isPresent()) {
+            return readings;
+        } else {
+            System.out.println("Вы не подавали показаний за этот месяц");
+            return Optional.empty();
+        }
     }
 }

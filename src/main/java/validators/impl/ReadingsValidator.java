@@ -1,4 +1,4 @@
-package validators;
+package validators.impl;
 
 import exceptions.ValidationException;
 import models.Readings;

@@ -1,0 +1,18 @@
+<configuration>
+
+    <appender name="DB" class="ch.qos.logback.classic.db.DBAppender">
+        <connectionSource class="ch.qos.logback.core.db.DriverManagerConnectionSource">
+            <driverClass>org.postgresql.Driver</driverClass>
+            <url>jdbc:postgresql://localhost:5433/mydb</url>
+            <user>myuser</user>
+            <password>mypassword</password>
+        </connectionSource>
+
+        <insertStatement>INSERT INTO service_schema.logging_event(date, log_level, logger, message, exception) VALUES (?, ?, ?, ?, ?)</insertStatement>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="DB" />
+    </root>
+
+</configuration>

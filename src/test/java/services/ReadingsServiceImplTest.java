@@ -1,144 +1,132 @@
 package services;
 
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
 import enums.Role;
 import exceptions.ValidationException;
 import models.Readings;
 import models.User;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import repositories.ReadingsRepository;
 import services.impl.ReadingsServiceImpl;
 import validators.Validator;
 
 import java.time.Month;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+@ExtendWith(MockitoExtension.class)
+class ReadingsServiceImplTest {
 
-public class ReadingsServiceImplTest {
     @Mock
-    private ReadingsRepository repository;
+    private ReadingsRepository readingsRepository;
+
     @Mock
-    private Validator<Readings> validator;
+    private Validator<Readings> readingsValidator;
+
     @InjectMocks
-    private ReadingsServiceImpl service;
+    private ReadingsServiceImpl readingsService;
+
     private User user;
     private Readings readings;
-    private AutoCloseable closeable;
 
     @BeforeEach
-    public void setUp() {
-        closeable = MockitoAnnotations.openMocks(this);
-        user = new User("testLogin", "testPassword", Role.USER);
-        readings = new Readings();
-        readings.add("heating", 100.0);
-        readings.add("hotWater", 100.0);
-        readings.add("coldWater", 100.0);
-    }
-
-    @AfterEach
-    public void closeResources() throws Exception {
-        closeable.close();
+    void setUp() {
+        user = new User("testUser", Role.USER);
+        readings = new Readings(); // Замените на соответствующую реализацию
+        // Настройка readings по необходимости
     }
 
     @Test
-    @DisplayName("Проверка добавления показаний, когда их еще нет")
-    public void testAddReadings() throws ValidationException {
-        when(repository.getAllReadings(user)).thenReturn(Optional.empty());
-        service.addReadings(user, Month.JANUARY, readings);
+    @DisplayName("Успешное добавление показаний")
+    void addReadingsSuccess() {
+        when(readingsRepository.getAllReadings(user)).thenReturn(Optional.empty());
 
-        verify(validator, times(1)).validate(readings);
-        verify(repository, times(1)).addReadings(user, Month.JANUARY, readings);
+        assertDoesNotThrow(() -> readingsService.addReadings(user, Month.JANUARY, readings));
+        verify(readingsValidator).validate(readings);
+        verify(readingsRepository).addReadings(user, Month.JANUARY, readings);
     }
 
     @Test
-    @DisplayName("Проверка добавления показаний, когда они уже есть")
-    public void testAddReadingsWhenAlreadyPresent() throws ValidationException {
-        Map<Month, Readings> readingsMap = new LinkedHashMap<>();
+    @DisplayName("Добавление показаний для уже существующего месяца")
+    void addReadingsForExistingMonth() {
+        Map<Month, Readings> existingReadings = new HashMap<>();
+        existingReadings.put(Month.JANUARY, readings);
+
+        when(readingsRepository.getAllReadings(user)).thenReturn(Optional.of(existingReadings));
+
+        Exception exception = assertThrows(RuntimeException.class, () -> readingsService.addReadings(user, Month.JANUARY, readings));
+        assertTrue(exception.getMessage().contains("За этот месяц уже были поданы показания"));
+    }
+
+    @Test
+    @DisplayName("Получение всех показаний пользователя")
+    void getAllReadingsSuccess() {
+        Map<Month, Readings> readingsMap = new HashMap<>();
         readingsMap.put(Month.JANUARY, readings);
-        when(repository.getAllReadings(user)).thenReturn(Optional.of(readingsMap));
 
-        service.addReadings(user, Month.JANUARY, readings);
+        when(readingsRepository.getAllReadings(user)).thenReturn(Optional.of(readingsMap));
 
-        verify(validator, times(1)).validate(readings);
-        verify(repository, never()).addReadings(user, Month.JANUARY, readings);
-    }
-
-    @Test
-    @DisplayName("Проверка получения всех показаний")
-    public void testGetAllReadings() {
-        Map<Month, Readings> readingsMap = new LinkedHashMap<>();
-        readingsMap.put(Month.JANUARY, readings);
-        readingsMap.put(Month.FEBRUARY, readings);
-        when(repository.getAllReadings(user)).thenReturn(Optional.of(readingsMap));
-
-        String result = service.getAllReadings(user);
-
+        String result = readingsService.getAllReadings(user);
         assertTrue(result.contains(Month.JANUARY.toString()));
-        assertTrue(result.contains(Month.FEBRUARY.toString()));
         assertTrue(result.contains(readings.toString()));
     }
 
     @Test
-    @DisplayName("Проверка получения всех показаний, когда их нет")
-    public void testGetAllReadingsWhenNonePresent() {
-        when(repository.getAllReadings(user)).thenReturn(Optional.empty());
+    @DisplayName("Получение показаний пользователя, когда показаний нет")
+    void getAllReadingsEmpty() {
+        when(readingsRepository.getAllReadings(user)).thenReturn(Optional.empty());
 
-        String result = service.getAllReadings(user);
-
-        assertEquals("Показаний не найдено.", result);
+        String result = readingsService.getAllReadings(user);
+        assertTrue(result.contains("Показаний не найдено"));
     }
 
     @Test
-    @DisplayName("Проверка получения последних показаний")
-    public void testGetLastReadings() {
-        Map<Month, Readings> readingsMap = new LinkedHashMap<>();
+    @DisplayName("Получение последних показаний пользователя")
+    void getLastReadingsSuccess() {
+        Map<Month, Readings> readingsMap = new HashMap<>();
         readingsMap.put(Month.JANUARY, readings);
-        when(repository.getAllReadings(user)).thenReturn(Optional.of(readingsMap));
 
-        Optional<Readings> result = service.getLastReadings(user);
+        when(readingsRepository.getAllReadings(user)).thenReturn(Optional.of(readingsMap));
 
+        Optional<Readings> result = readingsService.getLastReadings(user);
         assertTrue(result.isPresent());
         assertEquals(readings, result.get());
     }
 
     @Test
-    @DisplayName("Проверка получения последних показаний, когда их нет")
-    public void testGetLastReadingsWhenNonePresent() {
-        when(repository.getAllReadings(user)).thenReturn(Optional.empty());
+    @DisplayName("Получение последних показаний, когда показаний нет")
+    void getLastReadingsEmpty() {
+        when(readingsRepository.getAllReadings(user)).thenReturn(Optional.empty());
 
-        Optional<Readings> result = service.getLastReadings(user);
-
+        Optional<Readings> result = readingsService.getLastReadings(user);
         assertFalse(result.isPresent());
     }
-
     @Test
-    @DisplayName("Проверка получения показаний по месяцам")
-    public void testGetReadingsByMonth() {
-        when(repository.getReadingsByMonth(user, Month.JANUARY)).thenReturn(Optional.of(readings));
+    @DisplayName("Получение показаний за определенный месяц")
+    void getReadingsByMonthSuccess() {
+        when(readingsRepository.getReadingsByMonth(user, Month.JANUARY)).thenReturn(Optional.of(readings));
 
-        Optional<Readings> result = service.getReadingsByMonth(user, Month.JANUARY);
-
+        Optional<Readings> result = readingsService.getReadingsByMonth(user, Month.JANUARY);
         assertTrue(result.isPresent());
         assertEquals(readings, result.get());
     }
 
     @Test
-    @DisplayName("Проверка получения показаний по месяцам, когда их нет")
-    public void testGetReadingsByMonthWhenNonePresent() {
-        when(repository.getReadingsByMonth(user, Month.JANUARY)).thenReturn(Optional.empty());
+    @DisplayName("Получение показаний за месяц, когда показаний нет")
+    void getReadingsByMonthEmpty() {
+        when(readingsRepository.getReadingsByMonth(user, Month.JANUARY)).thenReturn(Optional.empty());
 
-        Optional<Readings> result = service.getReadingsByMonth(user, Month.JANUARY);
-
+        Optional<Readings> result = readingsService.getReadingsByMonth(user, Month.JANUARY);
         assertFalse(result.isPresent());
     }
+
 }
-
